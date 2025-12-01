@@ -38,7 +38,7 @@ jobs:
           cpsScm {
             scm {
               git {
-                remote { url('https://github.com/Tomer-ui/domain_monitoring_devops.git') }
+                remote { url('https://github.com/Tomer-ui/domain-monitor-system2.git') }
                 branch('main')
               }
             }
