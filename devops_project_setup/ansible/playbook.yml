@@ -75,17 +75,18 @@
           CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs/jenkins.yaml
           JAVA_OPTS: "-Xmx384m -Djenkins.install.runSetupWizard=false"
           JENKINS_ADMIN_PASSWORD: "{{ my_jenkins_pass }}"
-          # --- DOCKER HUB CREDENTIALS ---
           DOCKER_HUB_USER: "{{ docker_hub_user }}"
           DOCKER_HUB_PASS: "{{ docker_hub_pass }}"
-          # --- WEBHOOK SECURITY TOKEN ---
+          # CRITICAL: Pass the webhook secret to the container
           WEBHOOK_SECRET: "{{ webhook_secret }}"
 
     # 2. Install Plugins
+    # CRITICAL FIX: Added 'github' to this list. 
+    # Without it, JCasC crashes on 'githubpluginconfig'.
     - name: Install Jenkins Plugins
       shell: |
         docker exec -u root jenkins-master \
-        jenkins-plugin-cli --plugins configuration-as-code git job-dsl workflow-aggregator pipeline-stage-view docker-plugin docker-workflow plain-credentials
+        jenkins-plugin-cli --plugins configuration-as-code git github job-dsl workflow-aggregator pipeline-stage-view docker-plugin docker-workflow plain-credentials matrix-auth
       register: plugin_result
       changed_when: "'Downloaded' in plugin_result.stdout"
 

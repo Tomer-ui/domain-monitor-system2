@@ -10,16 +10,14 @@ jenkins:
        - id: "admin"
          password: "${JENKINS_ADMIN_PASSWORD}"
   
-  # SECURE STRATEGY: 
-  # We do NOT allow "Job/Build" to Anonymous globally. 
-  # The GitHub Plugin handles the auth via the Secret Token below.
+  # Standard security: Anonymous users can read (to see login page) but NOT build.
+  # The GitHub Webhook plugin bypasses this using the Secret Token.
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: true
   
   nodes:
   - permanent:
-      # Matches 'agent { label 'docker-worker' }' in Jenkinsfile
       labelString: "docker-worker" 
       mode: NORMAL
       name: "jenkins-node-1"
@@ -37,7 +35,7 @@ credentials:
   system:
     domainCredentials:
       - credentials:
-          # 1. Docker Hub Login (for 'docker login')
+          # 1. Docker Hub Login
           - usernamePassword:
               scope: GLOBAL
               id: "dockerhub-creds"
@@ -45,21 +43,21 @@ credentials:
               password: "${DOCKER_HUB_PASS}"
               description: "Docker Hub Login"
           
-          # 2. Docker Hub Username (for image tagging)
+          # 2. Docker Hub Username (String)
           - string:
               scope: GLOBAL
               id: "dockerhub-username"
               secret: "${DOCKER_HUB_USER}"
               description: "Docker Hub Username String"
           
-          # 3. GitHub Webhook Secret (HMAC Validation)
+          # 3. GitHub Webhook Secret (HMAC)
           - string:
               scope: GLOBAL
               id: "github-webhook-secret"
               secret: "${WEBHOOK_SECRET}"
               description: "GitHub Webhook Shared Secret"
 
-# CONFIGURATION: Tell the GitHub Plugin to verify signatures using our secret
+# Tells the GitHub Plugin to validate incoming webhooks using the secret above
 unclassified:
   githubpluginconfig:
     hookSecretConfigs:
