@@ -1,0 +1,48 @@
+jenkins:
+  systemMessage: "Managed by JCasC and Ansible"
+  numExecutors: 0
+  mode: EXCLUSIVE
+  # This port must be open for the Node to connect via JNLP
+  slaveAgentPort: 50000
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+       - id: "admin"
+         password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: true
+  
+  # Note: 'agentProtocols' has been removed as it causes crashes in modern Jenkins versions.
+  
+  nodes:
+  - permanent:
+      labelString: "Slave"
+      mode: NORMAL
+      name: "jenkins-node-1"
+      numExecutors: 2
+      remoteFS: "/home/jenkins"
+      launcher:
+        jnlp:
+          workDirSettings:
+            disabled: true
+            failIfWorkDirIsMissing: false
+            internalDir: "remoting"
+            workDirPath: "/tmp"
+
+jobs:
+  - script: >
+      pipelineJob('Domain-Monitoring-CI') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('https://github.com/Tomer-ui/domain_monitoring_devops.git') }
+                branch('main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }
