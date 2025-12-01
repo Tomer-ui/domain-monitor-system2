@@ -9,13 +9,17 @@ jenkins:
       users:
        - id: "admin"
          password: "${JENKINS_ADMIN_PASSWORD}"
+  
+  # SECURE STRATEGY: 
+  # We do NOT allow "Job/Build" to Anonymous globally. 
+  # The GitHub Plugin handles the auth via the Secret Token below.
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: true
   
   nodes:
   - permanent:
-      # CRITICAL: This must match the 'agent' label in your Jenkinsfile
+      # Matches 'agent { label 'docker-worker' }' in Jenkinsfile
       labelString: "docker-worker" 
       mode: NORMAL
       name: "jenkins-node-1"
@@ -29,24 +33,37 @@ jenkins:
             internalDir: "remoting"
             workDirPath: "/tmp"
 
-# NEW: Automatically create the credentials needed by the Pipeline
 credentials:
   system:
     domainCredentials:
       - credentials:
-          # Used for 'docker login' in the pipeline
+          # 1. Docker Hub Login (for 'docker login')
           - usernamePassword:
               scope: GLOBAL
               id: "dockerhub-creds"
               username: "${DOCKER_HUB_USER}"
               password: "${DOCKER_HUB_PASS}"
-              description: "Docker Hub Login Credentials"
-          # Used for string interpolation (image tagging) in the pipeline
+              description: "Docker Hub Login"
+          
+          # 2. Docker Hub Username (for image tagging)
           - string:
               scope: GLOBAL
               id: "dockerhub-username"
               secret: "${DOCKER_HUB_USER}"
               description: "Docker Hub Username String"
+          
+          # 3. GitHub Webhook Secret (HMAC Validation)
+          - string:
+              scope: GLOBAL
+              id: "github-webhook-secret"
+              secret: "${WEBHOOK_SECRET}"
+              description: "GitHub Webhook Shared Secret"
+
+# CONFIGURATION: Tell the GitHub Plugin to verify signatures using our secret
+unclassified:
+  githubpluginconfig:
+    hookSecretConfigs:
+      - credentialsId: "github-webhook-secret"
 
 jobs:
   - script: >

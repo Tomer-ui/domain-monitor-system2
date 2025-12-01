@@ -4,7 +4,7 @@ SECRETS_FILE="ansible/secrets.yml"
 TEMP_FILE="ansible/secrets_temp.yml"
 ENV_FILE="local_secrets.env"
 
-# Safety Trap
+# Safety Trap: Delete temp file if script crashes
 trap 'rm -f $TEMP_FILE' EXIT
 
 # 1. Load Secrets from .env file
@@ -19,25 +19,36 @@ fi
 
 # 2. Generate Vault Key if needed
 if [ ! -f "$VAULT_PASS_FILE" ]; then
+    echo "--- Generating Vault Key ---"
     openssl rand -base64 20 > $VAULT_PASS_FILE
 fi
 
 # 3. Create Ansible Secrets
 if [ ! -f "$SECRETS_FILE" ]; then
+    echo "--- Generating New Secrets ---"
+    
     JENKINS_PASS=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
+    
+    # Generate a random 40-char hex string for the Webhook HMAC
+    WEBHOOK_SECRET=$(openssl rand -hex 20)
     
     cat <<EOF > $TEMP_FILE
 my_jenkins_pass: "$JENKINS_PASS"
 docker_hub_user: "$DOCKER_HUB_USER"
 docker_hub_pass: "$DOCKER_HUB_PASS"
+webhook_secret: "$WEBHOOK_SECRET"
 EOF
 
     ansible-vault encrypt $TEMP_FILE \
         --vault-password-file $VAULT_PASS_FILE \
         --output $SECRETS_FILE
     
-    echo "✅ Secrets created successfully."
-    echo "JENKINS ADMIN PASS: $JENKINS_PASS"
+    echo "✅ Secrets created."
+    echo "====================================================="
+    echo "⚠️  COPY THIS SECRET TO GITHUB WEBHOOK SETUP:"
+    echo "$WEBHOOK_SECRET"
+    echo "====================================================="
 else
     echo "Secrets file already exists."
+    echo "To view the webhook secret, run: ansible-vault view $SECRETS_FILE --vault-password-file $VAULT_PASS_FILE"
 fi
