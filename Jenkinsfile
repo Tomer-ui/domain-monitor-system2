@@ -4,7 +4,7 @@ pipeline {
 
     // Environment variables available throughout the pipeline.
     environment {
-        IMAGE_REPO = "domain-monitor-system"
+        IMAGE_REPO = "domain-monitor-system2"
       
         commitId = env.GIT_COMMIT.take(8)
     }

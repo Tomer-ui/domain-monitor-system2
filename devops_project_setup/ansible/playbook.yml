@@ -6,7 +6,6 @@
   hosts: all
   become: yes
   tasks:
-    # 1. SWAP CONFIGURATION (Essential for stability)
     - name: Create and Enable Swap (2GB)
       shell: |
         swapoff /swapfile || true
@@ -17,7 +16,6 @@
         grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
       register: swap_result
 
-    # 2. DOCKER INSTALLATION
     - name: Update Apt Cache
       apt:
         update_cache: yes
@@ -77,12 +75,16 @@
           CASC_JENKINS_CONFIG: /var/jenkins_home/casc_configs/jenkins.yaml
           JAVA_OPTS: "-Xmx384m -Djenkins.install.runSetupWizard=false"
           JENKINS_ADMIN_PASSWORD: "{{ my_jenkins_pass }}"
+          # --- SECRETS INJECTION FOR JCASC ---
+          DOCKER_HUB_USER: "{{ docker_hub_user }}"
+          DOCKER_HUB_PASS: "{{ docker_hub_pass }}"
 
     # 2. Install Plugins
+    # Added 'plain-credentials' which is required for the "Secret string" credential type
     - name: Install Jenkins Plugins
       shell: |
         docker exec -u root jenkins-master \
-        jenkins-plugin-cli --plugins configuration-as-code git job-dsl workflow-aggregator pipeline-stage-view docker-plugin docker-workflow
+        jenkins-plugin-cli --plugins configuration-as-code git job-dsl workflow-aggregator pipeline-stage-view docker-plugin docker-workflow plain-credentials
       register: plugin_result
       changed_when: "'Downloaded' in plugin_result.stdout"
 

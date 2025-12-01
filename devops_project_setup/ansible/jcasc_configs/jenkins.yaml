@@ -2,7 +2,6 @@ jenkins:
   systemMessage: "Managed by JCasC and Ansible"
   numExecutors: 0
   mode: EXCLUSIVE
-  # This port must be open for the Node to connect via JNLP
   slaveAgentPort: 50000
   securityRealm:
     local:
@@ -14,11 +13,10 @@ jenkins:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: true
   
-  # Note: 'agentProtocols' has been removed as it causes crashes in modern Jenkins versions.
-  
   nodes:
   - permanent:
-      labelString: "Slave"
+      # CRITICAL: This must match the 'agent' label in your Jenkinsfile
+      labelString: "docker-worker" 
       mode: NORMAL
       name: "jenkins-node-1"
       numExecutors: 2
@@ -30,6 +28,25 @@ jenkins:
             failIfWorkDirIsMissing: false
             internalDir: "remoting"
             workDirPath: "/tmp"
+
+# NEW: Automatically create the credentials needed by the Pipeline
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # Used for 'docker login' in the pipeline
+          - usernamePassword:
+              scope: GLOBAL
+              id: "dockerhub-creds"
+              username: "${DOCKER_HUB_USER}"
+              password: "${DOCKER_HUB_PASS}"
+              description: "Docker Hub Login Credentials"
+          # Used for string interpolation (image tagging) in the pipeline
+          - string:
+              scope: GLOBAL
+              id: "dockerhub-username"
+              secret: "${DOCKER_HUB_USER}"
+              description: "Docker Hub Username String"
 
 jobs:
   - script: >
