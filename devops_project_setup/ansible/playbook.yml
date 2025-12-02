@@ -142,10 +142,10 @@
       args:
         creates: /usr/bin/google-chrome
 
+    # FIXED TASK: Uses the 'Stable' channel endpoint instead of exact version matching
     - name: Install Chromedriver
       shell: |
-        CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3 | cut -d '.' -f 1-3)
-        DOWNLOAD_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | jq -r ".versions[] | select(.version==\"$CHROME_VERSION\") | .downloads.chromedriver[0].url")
+        DOWNLOAD_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url')
         wget -O /tmp/chromedriver.zip $DOWNLOAD_URL
         unzip -o /tmp/chromedriver.zip -d /tmp/
         mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
@@ -169,7 +169,6 @@
         group: ubuntu
         mode: '0755'
 
-    # THIS TASK DOWNLOADS THE JAR FILE (Matches your 'What about the jar?' question)
     - name: Download Agent JAR from Master
       get_url:
         url: "http://{{ master_private_ip }}:8080/jnlpJars/agent.jar"
@@ -177,7 +176,7 @@
         owner: ubuntu
         group: ubuntu
         mode: '0644'
-        force: yes # Overwrite if exists
+        force: yes
 
     - name: Create Systemd Service File
       copy:
@@ -190,7 +189,6 @@
           [Service]
           User=ubuntu
           WorkingDirectory={{ workspace_dir }}
-          # FIX: using 'jenkins-agent.jnlp' (Modern) instead of 'slave-agent.jnlp' (Legacy)
           ExecStart=/usr/bin/java -jar {{ workspace_dir }}/agent.jar -jnlpUrl http://{{ master_private_ip }}:8080/computer/jenkins-node-1/jenkins-agent.jnlp -secret {{ node_secret }} -workDir "{{ workspace_dir }}"
           Restart=always
           RestartSec=5
