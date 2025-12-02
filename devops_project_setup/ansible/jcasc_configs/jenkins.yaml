@@ -10,9 +10,8 @@ jenkins:
        - id: "admin"
          password: "${JENKINS_ADMIN_PASSWORD}"
   
-  # 1. AUTH STRATEGY
-  # Anonymous users can READ (needed to hit the webhook URL), 
-  # but they cannot Trigger builds unless they have the Secret Token (HMAC).
+  # Security: Anonymous users can READ (required for Webhook to reach Jenkins)
+  # But the GitHub Plugin restricts TRIGGERS using the Secret Token.
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: true
@@ -23,7 +22,8 @@ jenkins:
       mode: NORMAL
       name: "jenkins-node-1"
       numExecutors: 2
-      remoteFS: "/home/jenkins"
+      # MATCHES SOP: The directory on the worker VM
+      remoteFS: "/home/ubuntu/jenkins_ws"
       launcher:
         jnlp:
           workDirSettings:
@@ -32,7 +32,6 @@ jenkins:
             internalDir: "remoting"
             workDirPath: "/tmp"
 
-# 2. CREDENTIALS SETUP
 credentials:
   system:
     domainCredentials:
@@ -44,39 +43,32 @@ credentials:
               username: "${DOCKER_HUB_USER}"
               password: "${DOCKER_HUB_PASS}"
               description: "Docker Hub Login"
-          
-          # Docker Hub Username (String for tagging)
+          # Docker Hub Username (String)
           - string:
               scope: GLOBAL
               id: "dockerhub-username"
               secret: "${DOCKER_HUB_USER}"
               description: "Docker Hub Username String"
-          
-          # GitHub Webhook Secret (HMAC Validation)
+          # GitHub Webhook Secret
           - string:
               scope: GLOBAL
               id: "github-webhook-secret"
               secret: "${WEBHOOK_SECRET}"
               description: "GitHub Webhook Shared Secret"
 
-# 3. GITHUB PLUGIN CONFIG
-# This tells Jenkins: "Don't trust just anyone. Only trust webhooks signed with this secret."
+# GitHub Plugin Security Configuration
 unclassified:
   githubpluginconfig:
     hookSecretConfigs:
       - credentialsId: "github-webhook-secret"
 
-# 4. JOB DEFINITION
 jobs:
   - script: >
       pipelineJob('Domain-Monitoring-CI') {
-        
-        // FIX: Explicitly enable the GitHub trigger here.
-        // This ensures the job listens to the webhook BEFORE the first run.
+        # FIX: Ensure listener is active immediately
         triggers {
           githubPush()
         }
-
         definition {
           cpsScm {
             scm {
