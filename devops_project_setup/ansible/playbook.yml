@@ -19,9 +19,10 @@
       apt:
         update_cache: yes
 
+    # FIX: Added 'python3-venv' to this list
     - name: Install Prerequisite Packages
       apt:
-        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip, unzip, openjdk-17-jre, jq, gnupg]
+        name: [apt-transport-https, ca-certificates, curl, software-properties-common, python3-pip, python3-venv, unzip, openjdk-17-jre, jq, gnupg]
         state: present
 
     - name: Add Docker GPG Key and Repo
@@ -142,7 +143,6 @@
       args:
         creates: /usr/bin/google-chrome
 
-    # FIXED TASK: Uses the 'Stable' channel endpoint instead of exact version matching
     - name: Install Chromedriver
       shell: |
         DOWNLOAD_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url')
