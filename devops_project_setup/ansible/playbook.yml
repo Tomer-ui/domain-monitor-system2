@@ -79,7 +79,6 @@
           WEBHOOK_SECRET: "{{ webhook_secret }}"
 
     # 2. Install Plugins
-    # Includes 'github' (for webhooks) and 'ws-cleanup' (for cleanWs)
     - name: Install Jenkins Plugins
       shell: |
         docker exec -u root jenkins-master \
@@ -133,7 +132,7 @@
     workspace_dir: "/home/ubuntu/jenkins_ws"
   
   tasks:
-    # --- SOP Step 8: Dependencies (Chrome & Driver) ---
+    # --- Dependencies (Chrome & Driver) ---
     - name: Install Google Chrome
       shell: |
         wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > /usr/share/keyrings/google-chrome.gpg
@@ -154,7 +153,14 @@
       args:
         creates: /usr/local/bin/chromedriver
 
-    # --- SOP Step 9: Workspace ---
+    # --- Setup Workspace & Service ---
+    
+    - name: Stop Service before updating jar
+      systemd:
+        name: jenkins-worker
+        state: stopped
+      ignore_errors: yes
+
     - name: Create Workspace Directory
       file:
         path: "{{ workspace_dir }}"
@@ -163,7 +169,7 @@
         group: ubuntu
         mode: '0755'
 
-    # --- SOP Step 12: Download Agent & Setup Systemd ---
+    # THIS TASK DOWNLOADS THE JAR FILE (Matches your 'What about the jar?' question)
     - name: Download Agent JAR from Master
       get_url:
         url: "http://{{ master_private_ip }}:8080/jnlpJars/agent.jar"
@@ -171,10 +177,7 @@
         owner: ubuntu
         group: ubuntu
         mode: '0644'
-      register: download_agent
-      until: download_agent is success
-      retries: 10
-      delay: 5
+        force: yes # Overwrite if exists
 
     - name: Create Systemd Service File
       copy:
@@ -187,7 +190,8 @@
           [Service]
           User=ubuntu
           WorkingDirectory={{ workspace_dir }}
-          ExecStart=/usr/bin/java -jar {{ workspace_dir }}/agent.jar -jnlpUrl http://{{ master_private_ip }}:8080/computer/jenkins-node-1/slave-agent.jnlp -secret {{ node_secret }} -workDir "{{ workspace_dir }}"
+          # FIX: using 'jenkins-agent.jnlp' (Modern) instead of 'slave-agent.jnlp' (Legacy)
+          ExecStart=/usr/bin/java -jar {{ workspace_dir }}/agent.jar -jnlpUrl http://{{ master_private_ip }}:8080/computer/jenkins-node-1/jenkins-agent.jnlp -secret {{ node_secret }} -workDir "{{ workspace_dir }}"
           Restart=always
           RestartSec=5
 
